@@ -1,0 +1,57 @@
+services:
+  db:
+    image: postgres:15
+    container_name: survey_system_pg
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ./backend
+    container_name: survey_system_backend
+    depends_on:
+      - db
+    environment:
+      RAILS_ENV: development
+      DATABASE_HOST: db
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+    volumes:
+      - ./backend:/app
+    command: >
+      sh -c "
+        bundle install &&
+        rails db:create db:migrate db:seed &&
+        bundle exec rspec &&
+        rails server -b 0.0.0.0 -p 3000
+      "
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: survey_system_frontend
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+    working_dir: /app
+    command: >
+      sh -c "
+        npm install &&
+        npm run test --watchAll=false &&
+        npm start
+      "
+    ports:
+      - "3001:3000"
+
+volumes:
+  postgres_data:
